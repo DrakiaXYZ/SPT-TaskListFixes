@@ -61,13 +61,16 @@ namespace DrakiaXYZ_TaskListFixes
 			NotesTask ____notesTaskTemplate, RectTransform ____notesTaskContent, GameObject ____notesTaskDescriptionTemplate, GameObject ____notesTaskDescription,
 			GClass788 ___UI, InventoryControllerClass ____inventoryController)
 		{
-			Logger.LogDebug("TasksScreen::ShowQuests");
-			Stopwatch stopwatch = new Stopwatch();
+			// Dynamically get the UI, and the required methods, so we can avoid referencing a GClass
+			FieldInfo uiFieldInfo = AccessTools.Field(typeof(TasksScreen), "UI");
+			object uiField = uiFieldInfo.GetValue(__instance);
+			MethodInfo uiDisposeMethod = AccessTools.Method(uiFieldInfo.FieldType, "Dispose");
+			MethodInfo uiAddViewListMethod = AccessTools.Method(uiFieldInfo.FieldType, "AddViewList").MakeGenericMethod(new Type[] { typeof(QuestClass), typeof(NotesTask) });
+
 			// Clear the existing UI
-			___UI.Dispose();
+			uiDisposeMethod.Invoke(uiField, new object[] { });
 
 			// Fetch all the active quests
-			stopwatch.Start();
 			List<QuestClass> questList = (
 				from quest in (
 					from x in questController.Quests
@@ -75,8 +78,6 @@ namespace DrakiaXYZ_TaskListFixes
 					select x).Where(____questsAdditionalFilter)
 				where FilterInGame(__instance, questController, quest)
 				select quest).ToList<QuestClass>();
-			stopwatch.Stop();
-			Logger.LogDebug($"Fetched quests in {stopwatch.ElapsedMilliseconds} ms");
 
 			// If there are no quests, show no tasks screen, otherwise hide it
 			if (!questList.Any<QuestClass>())
@@ -87,7 +88,6 @@ namespace DrakiaXYZ_TaskListFixes
 			____noActiveTasksObject.SetActive(false);
 
 			// Sort by the selected column
-			stopwatch.Restart();
 			IComparer<QuestClass> comparer;
 			switch (__instance.SortType)
 			{
@@ -112,18 +112,13 @@ namespace DrakiaXYZ_TaskListFixes
 				default:
 					throw new ArgumentOutOfRangeException();
 			}
-			stopwatch.Stop();
-			Logger.LogDebug($"Created comparer in {stopwatch.ElapsedMilliseconds} ms");
-			stopwatch.Restart();
+
 			questList.Sort(comparer);
-			stopwatch.Stop();
-			Logger.LogDebug($"Sorted list in {stopwatch.ElapsedMilliseconds} ms");
 			if (__instance.SortAscend)
 			{
 				questList.Reverse();
 			}
 
-			stopwatch.Restart();
 			// Loop through all the quests and flag whether they're active (The player is in a location, and the quest is set to this location, or any)
 			foreach (QuestClass questClass in questList)
 			{
@@ -133,26 +128,20 @@ namespace DrakiaXYZ_TaskListFixes
 					____questsAvailability.Add(questClass, questActive);
 				}
 			}
-			stopwatch.Stop();
-			Logger.LogDebug($"Created availability dict in {stopwatch.ElapsedMilliseconds} ms");
 
 			// Sort the quest list to have all currently active quests at the top
-			stopwatch.Restart();
 			questList = questList.OrderBy(quest => quest, Comparer<QuestClass>.Create((QuestClass questX, QuestClass questY) => ____questsAvailability[questY].CompareTo(____questsAvailability[questX]))).ToList();
-			stopwatch.Stop();
-			Logger.LogDebug($"Sorted active quests to top in {stopwatch.ElapsedMilliseconds} ms");
 
 			// Create the notes object, no idea if this is right, the decompiled code doesn't actually work here
-			NotesTaskDescriptionShort description = GClass5.InstantiatePrefab<NotesTaskDescriptionShort>(____notesTaskDescription, ____notesTaskDescriptionTemplate);
+			NotesTaskDescriptionShort description = ____notesTaskDescription.InstantiatePrefab<NotesTaskDescriptionShort>(____notesTaskDescriptionTemplate);
 
-			// Build the list
-			stopwatch.Restart();
-			___UI.AddViewList<QuestClass, NotesTask>(questList, ____notesTaskTemplate, ____notesTaskContent, delegate (QuestClass quest, NotesTask view)
+			// Build the list, using a delegate so we can avoid a direct reference to a GClass
+			Type delegateType = uiAddViewListMethod.GetParameters()[3].ParameterType;
+			Action<QuestClass, NotesTask> delegateInstance = (QuestClass quest, NotesTask view) => 
 			{
 				_notesTaskShowMethod.Invoke(view, new object[] { quest, session, ____inventoryController, questController, description, ____questsAvailability[quest] });
-			});
-			stopwatch.Stop();
-			Logger.LogDebug($"Drew list in {stopwatch.ElapsedMilliseconds} ms");
+			};
+			uiAddViewListMethod.Invoke(uiField, new object[] { questList, ____notesTaskTemplate, ____notesTaskContent, delegateInstance });
 
 			// Stop the original method from running
 			return false;
