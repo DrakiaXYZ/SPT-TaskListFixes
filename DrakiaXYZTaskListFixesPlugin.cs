@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
+using static RawQuestClass;
 
 namespace DrakiaXYZ_TaskListFixes
 {
@@ -33,8 +34,6 @@ namespace DrakiaXYZ_TaskListFixes
 
 	class TasksScreenShowQuestsPatch : ModulePatch
 	{
-		private static Type _questStringFieldComparer;
-		private static Type _questStatusComparer;
 		private static MethodInfo _filterInGameMethod;
 		private static MethodInfo _notesTaskShowMethod;
 		private static Dictionary<QuestClass, float> _questProgress = new Dictionary<QuestClass, float>();
@@ -42,10 +41,6 @@ namespace DrakiaXYZ_TaskListFixes
 		protected override MethodBase GetTargetMethod()
 		{
 			Type tasksScreenType = typeof(TasksScreen);
-
-			// Fetch the comparer classes
-			_questStringFieldComparer = AccessTools.Inner(tasksScreenType, "QuestStringFieldComparer");
-			_questStatusComparer = AccessTools.Inner(tasksScreenType, "QuestStatusComparer");
 
 			// Fetch the FilterInGame method from TasksScreen
 			_filterInGameMethod = AccessTools.Method(tasksScreenType, "FilterInGame");
@@ -97,16 +92,16 @@ namespace DrakiaXYZ_TaskListFixes
 					comparer = new QuestTraderComparer();
 					break;
 				case EQuestsSortType.Type:
-					comparer = (IComparer<QuestClass>)Activator.CreateInstance(_questStringFieldComparer, new object[] { EQuestsSortType.Type });
+					comparer = new QuestTypeComparer();
 					break;
 				case EQuestsSortType.Task:
-					comparer = (IComparer<QuestClass>)Activator.CreateInstance(_questStringFieldComparer, new object[] { EQuestsSortType.Task });
+					comparer = new QuestTaskNameComparer();
 					break;
 				case EQuestsSortType.Location:
 					comparer = new QuestLocationComparer(____currentLocationId);
 					break;
 				case EQuestsSortType.Status:
-					comparer = (IComparer<QuestClass>)Activator.CreateInstance(_questStatusComparer);
+					comparer = new QuestStatusComparer();
 					break;
 				case EQuestsSortType.Progress:
 					comparer = new QuestProgressComparer();
@@ -165,37 +160,26 @@ namespace DrakiaXYZ_TaskListFixes
 
 			public int Compare(QuestClass quest1, QuestClass quest2)
 			{
-				// Handle identical and null cases
-				if (quest1 == quest2)
-				{
-					return 0;
-				}
-				if (quest2 == null)
-				{
-					return 1;
-				}
-				if (quest1 == null)
-				{
-					return -1;
-				}
+				if (HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
+                {
+					return result;
+                }
 
 				string locationId1 = quest1.Template.LocationId;
 				string locationId2 = quest2.Template.LocationId;
 
 				// For tasks on the same map, if grouping same map by trader,
-				// sort by trader if different. Otherwise sort by start time (Original logic), or 
-				// task name (New logic)
-				if (string.Equals(locationId1, locationId2))
+				// sort by trader if trader is different.
+				// Otherwise sort by start time (Original logic), or task name (New logic)
+				if (locationId1 == locationId2)
 				{
-					if (DrakiaXYZTaskListFixesPlugin.GroupLocByTrader)
+					string traderId1 = quest1.Template.TraderId;
+					string traderId2 = quest2.Template.TraderId;
+					if (DrakiaXYZTaskListFixesPlugin.GroupLocByTrader && traderId1 != traderId2)
 					{
-						string traderName1 = (quest1.Template.TraderId + " Nickname").Localized();
-						string traderName2 = (quest2.Template.TraderId + " Nickname").Localized();
-						int traderCompare = string.CompareOrdinal(traderName1, traderName2);
-						if (traderCompare != 0)
-                        {
-							return traderCompare;
-                        }
+						string traderName1 = (traderId1 + " Nickname").Localized();
+						string traderName2 = (traderId2 + " Nickname").Localized();
+						return string.CompareOrdinal(traderName1, traderName2);
 					}
 
 					if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
@@ -206,7 +190,7 @@ namespace DrakiaXYZ_TaskListFixes
 					return quest1.StartTime.CompareTo(quest2.StartTime);
 				}
 
-				// Handle quests being on the same map as the player? Should we keep this?
+				// Sort quests on the same location as the player to the top of the list
 				if (locationId2 == this._locationId)
 				{
 					return 1;
@@ -227,9 +211,9 @@ namespace DrakiaXYZ_TaskListFixes
 				}
 
 				// Finally sort by the actual quest location name
-				string locationName = (locationId1 + " Name").Localized();
+				string locationName1 = (locationId1 + " Name").Localized();
 				string locationName2 = (locationId2 + " Name").Localized();
-				return string.CompareOrdinal(locationName, locationName2);
+				return string.CompareOrdinal(locationName1, locationName2);
 			}
 		}
 
@@ -237,18 +221,9 @@ namespace DrakiaXYZ_TaskListFixes
 		{
 			public int Compare(QuestClass quest1, QuestClass quest2)
 			{
-				// Handle identical and null cases
-				if (quest1 == quest2)
+				if (HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
 				{
-					return 0;
-				}
-				if (quest2 == null)
-				{
-					return 1;
-				}
-				if (quest1 == null)
-				{
-					return -1;
+					return result;
 				}
 
 				// If the trader IDs are the same, sort by the start time
@@ -256,19 +231,29 @@ namespace DrakiaXYZ_TaskListFixes
 				string traderId2 = quest2.Template.TraderId;
 
 				// For tasks from the same trader, if grouping traders by map,
-				// sort by map if different. Otherwise sort by start time (Original logic), or 
+				// sort by map if map is different. Otherwise sort by start time (Original logic), or 
 				// task name (New logic)
-				if (string.Equals(traderId1, traderId2))
+				if (traderId1 == traderId2)
 				{
-					if (DrakiaXYZTaskListFixesPlugin.GroupTraderByLoc)
+					string locationId1 = quest1.Template.LocationId;
+					string locationId2 = quest2.Template.LocationId;
+
+					if (DrakiaXYZTaskListFixesPlugin.GroupTraderByLoc && locationId1 != locationId2)
 					{
-						string locationName = (quest1.Template.LocationId + " Name").Localized();
-						string locationName2 = (quest2.Template.LocationId + " Name").Localized();
-						int locationCompare = string.CompareOrdinal(locationName, locationName2);
-						if (locationCompare != 0)
-                        {
-							return locationCompare;
-                        }
+						// Sort "any" above other locations
+						if (locationId2 == "any")
+						{
+							return 1;
+						}
+						if (locationId1 == "any")
+						{
+							return -1;
+						}
+
+						// Otherwise sort by the map name
+						string locationName = (locationId1 + " Name").Localized();
+						string locationName2 = (locationId2 + " Name").Localized();
+						return string.CompareOrdinal(locationName, locationName2);
 					}
 
 					if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
@@ -279,11 +264,6 @@ namespace DrakiaXYZ_TaskListFixes
 					return quest1.StartTime.CompareTo(quest2.StartTime);
 				}
 
-				if (string.Equals(traderId1, traderId2))
-				{
-					return quest1.StartTime.CompareTo(quest2.StartTime);
-				}
-
 				// Otherwise compare the trader's nicknames
 				string traderName1 = (traderId1 + " Nickname").Localized();
 				string traderName2 = (traderId2 + " Nickname").Localized();
@@ -291,22 +271,110 @@ namespace DrakiaXYZ_TaskListFixes
 			}
 		}
 
+		private class QuestTypeComparer : IComparer<QuestClass>
+		{
+			public int Compare(QuestClass quest1, QuestClass quest2)
+			{
+				if (HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
+				{
+					return result;
+				}
+
+				// For non-matching types, sort by their name
+				string type1 = Enum.GetName(typeof(EQuestType), quest1.Template.QuestType);
+				string type2 = Enum.GetName(typeof(EQuestType), quest2.Template.QuestType);
+				if (type1 != type2)
+                {
+					return string.CompareOrdinal(type1, type2);
+				}
+
+				if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+				{
+					return string.CompareOrdinal(quest1.Template.Name, quest2.Template.Name);
+				}
+
+				return quest1.StartTime.CompareTo(quest2.StartTime);
+			}
+		}
+
+		private class QuestTaskNameComparer : IComparer<QuestClass>
+		{
+			public int Compare(QuestClass quest1, QuestClass quest2)
+			{
+				if (HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
+				{
+					return result;
+				}
+
+				string questName1 = quest1.Template.Name;
+				string questName2 = quest2.Template.Name;
+				if (questName1 != questName2)
+                {
+					return string.CompareOrdinal(questName1, questName2);
+				}
+
+				return quest1.StartTime.CompareTo(quest2.StartTime);
+			}
+		}
+
+		private class QuestStatusComparer : IComparer<QuestClass>
+		{
+			public int Compare(QuestClass quest1, QuestClass quest2)
+			{
+				if (HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
+				{
+					return result;
+				}
+
+				// If the queset status is the same, sort by either the name or the start time
+				EQuestStatus questStatus1 = quest1.QuestStatus;
+				EQuestStatus questStatus2 = quest2.QuestStatus;
+				if (questStatus1 == questStatus2)
+				{
+					if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+					{
+						// We do this opposite of other sorting, because status defaults to descending
+						return string.CompareOrdinal(quest2.Template.Name, quest1.Template.Name);
+					}
+
+					// We do this opposite of other sorting, because status defaults to descending
+					return quest2.StartTime.CompareTo(quest1.StartTime);
+				}
+
+				// This is the original logic, but with sorting by name for "matched" things added
+				if (questStatus2 != EQuestStatus.MarkedAsFailed)
+				{
+					if (questStatus1 != EQuestStatus.AvailableForFinish)
+					{
+						if (questStatus2 != EQuestStatus.AvailableForFinish)
+						{
+							if (questStatus1 != EQuestStatus.MarkedAsFailed)
+							{
+								if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+								{
+									// We do this opposite of other sorting, because status defaults to descending
+									return string.CompareOrdinal(quest2.Template.Name, quest1.Template.Name);
+								}
+
+								// We do this opposite of other sorting, because status defaults to descending
+								return quest2.StartTime.CompareTo(quest1.StartTime);
+							}
+						}
+						return -1;
+					}
+				}
+
+				return 1;
+			}
+		}
+
 		private class QuestProgressComparer : IComparer<QuestClass>
 		{
 			public int Compare(QuestClass quest1, QuestClass quest2)
 			{
-				// Handle identical and null cases
-				if (quest1 == quest2)
+				if (HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
 				{
-					return 0;
-				}
-				if (quest2 == null)
-				{
-					return 1;
-				}
-				if (quest1 == null)
-				{
-					return -1;
+					return result;
 				}
 
 				// Fetch the quest progress from our dictionary if it exists, otherwise cache it
@@ -328,10 +396,42 @@ namespace DrakiaXYZ_TaskListFixes
 					return quest1Progress.CompareTo(quest2Progress);
 				}
 
-				// If they are equal, sort by start time
-				return quest1.StartTime.CompareTo(quest2.StartTime);
+				// Sort by name as the fallback is option is enabled
+				if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+				{
+					// We do this opposite of other sorting, because progress defaults to descending
+					return string.CompareOrdinal(quest2.Template.Name, quest1.Template.Name);
+				}
+
+				// Otherwise use the default behaviour of sorting by start time
+				// We do this opposite of other sorting, because progress defaults to descending
+				return quest2.StartTime.CompareTo(quest1.StartTime);
 			}
 		}
+
+		private static bool HandleNullOrEqualQuestCompare(QuestClass quest1, QuestClass quest2, out int result)
+        {
+			if (quest1 == quest2)
+			{
+				result = 0;
+				return true;
+			}
+
+			if (quest1 == null)
+			{
+				result = -1;
+				return true;
+			}
+
+			if (quest2 == null)
+			{
+				result = 1;
+				return true;
+			}
+
+			result = 0;
+			return false;
+        }
 
 		public static void ClearQuestProgress()
 		{
