@@ -6,7 +6,6 @@ using EFT.UI;
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using TMPro;
@@ -16,16 +15,13 @@ using static RawQuestClass;
 namespace DrakiaXYZ_TaskListFixes
 {
     [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "0.0.1")]
-    public class DrakiaXYZTaskListFixesPlugin : BaseUnityPlugin
+    public class TaskListFixesPlugin : BaseUnityPlugin
     {
-		public static bool NewDefaultOrder = true;
-		public static bool GroupLocByTrader = true;
-		public static bool GroupTraderByLoc = true;
-		public static bool SortGroupByName = true;
-
         private void Awake()
         {
-            new TasksScreenShowQuestsPatch().Enable();
+			Settings.Init(Config);
+
+			new TasksScreenShowQuestsPatch().Enable();
 			new TasksScreenShowPatch().Enable();
 			new QuestProgressViewPatch().Enable();
 			new QuestsFilterPanelSortPatch().Enable();
@@ -175,14 +171,14 @@ namespace DrakiaXYZ_TaskListFixes
 				{
 					string traderId1 = quest1.Template.TraderId;
 					string traderId2 = quest2.Template.TraderId;
-					if (DrakiaXYZTaskListFixesPlugin.GroupLocByTrader && traderId1 != traderId2)
+					if (Settings.GroupLocByTrader.Value && traderId1 != traderId2)
 					{
 						string traderName1 = (traderId1 + " Nickname").Localized();
 						string traderName2 = (traderId2 + " Nickname").Localized();
 						return string.CompareOrdinal(traderName1, traderName2);
 					}
 
-					if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+					if (Settings.SubSortByName.Value)
 					{
 						return string.CompareOrdinal(quest1.Template.Name, quest2.Template.Name);
 					}
@@ -238,7 +234,7 @@ namespace DrakiaXYZ_TaskListFixes
 					string locationId1 = quest1.Template.LocationId;
 					string locationId2 = quest2.Template.LocationId;
 
-					if (DrakiaXYZTaskListFixesPlugin.GroupTraderByLoc && locationId1 != locationId2)
+					if (Settings.GroupTraderByLoc.Value && locationId1 != locationId2)
 					{
 						// Sort "any" above other locations
 						if (locationId2 == "any")
@@ -256,7 +252,7 @@ namespace DrakiaXYZ_TaskListFixes
 						return string.CompareOrdinal(locationName, locationName2);
 					}
 
-					if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+					if (Settings.SubSortByName.Value)
 					{
 						return string.CompareOrdinal(quest1.Template.Name, quest2.Template.Name);
 					}
@@ -288,7 +284,7 @@ namespace DrakiaXYZ_TaskListFixes
 					return string.CompareOrdinal(type1, type2);
 				}
 
-				if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+				if (Settings.SubSortByName.Value)
 				{
 					return string.CompareOrdinal(quest1.Template.Name, quest2.Template.Name);
 				}
@@ -331,7 +327,7 @@ namespace DrakiaXYZ_TaskListFixes
 				EQuestStatus questStatus2 = quest2.QuestStatus;
 				if (questStatus1 == questStatus2)
 				{
-					if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+					if (Settings.SubSortByName.Value)
 					{
 						// We do this opposite of other sorting, because status defaults to descending
 						return string.CompareOrdinal(quest2.Template.Name, quest1.Template.Name);
@@ -350,7 +346,7 @@ namespace DrakiaXYZ_TaskListFixes
 						{
 							if (questStatus1 != EQuestStatus.MarkedAsFailed)
 							{
-								if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+								if (Settings.SubSortByName.Value)
 								{
 									// We do this opposite of other sorting, because status defaults to descending
 									return string.CompareOrdinal(quest2.Template.Name, quest1.Template.Name);
@@ -397,7 +393,7 @@ namespace DrakiaXYZ_TaskListFixes
 				}
 
 				// Sort by name as the fallback is option is enabled
-				if (DrakiaXYZTaskListFixesPlugin.SortGroupByName)
+				if (Settings.SubSortByName.Value)
 				{
 					// We do this opposite of other sorting, because progress defaults to descending
 					return string.CompareOrdinal(quest2.Template.Name, quest1.Template.Name);
@@ -500,7 +496,7 @@ namespace DrakiaXYZ_TaskListFixes
 		public static void PatchPrefix(QuestsFilterPanel __instance, EQuestsSortType sortType, FilterButton button, FilterButton ___filterButton_0)
 		{
 			// If the button is different than the stored filterButton_0, it means we're sorting by a new column.
-			if (DrakiaXYZTaskListFixesPlugin.NewDefaultOrder && button != ___filterButton_0)
+			if (Settings.NewDefaultOrder.Value && button != ___filterButton_0)
             {
 				switch (sortType)
                 {
