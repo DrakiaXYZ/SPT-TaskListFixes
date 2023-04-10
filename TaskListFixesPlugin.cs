@@ -14,7 +14,7 @@ using static RawQuestClass;
 
 namespace DrakiaXYZ_TaskListFixes
 {
-    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.0.0")]
+    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.0.1")]
     public class TaskListFixesPlugin : BaseUnityPlugin
     {
         private void Awake()
