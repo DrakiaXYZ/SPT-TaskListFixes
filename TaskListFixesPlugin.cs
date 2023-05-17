@@ -12,9 +12,9 @@ using TMPro;
 using UnityEngine;
 using static RawQuestClass;
 
-namespace DrakiaXYZ_TaskListFixes
+namespace DrakiaXYZ.TaskListFixes
 {
-    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.0.1")]
+    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.0.2")]
     public class TaskListFixesPlugin : BaseUnityPlugin
     {
         private void Awake()
