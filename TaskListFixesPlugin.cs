@@ -1,5 +1,6 @@
 ﻿using Aki.Reflection.Patching;
 using BepInEx;
+using DrakiaXYZ.TaskListFixes.VersionChecker;
 using EFT;
 using EFT.Quests;
 using EFT.UI;
@@ -19,6 +20,11 @@ namespace DrakiaXYZ.TaskListFixes
     {
         private void Awake()
         {
+			if (!TarkovVersion.CheckEftVersion(Logger, Info, Config))
+			{
+				throw new Exception($"Invalid EFT Version");
+			}
+
 			Settings.Init(Config);
 
 			new TasksScreenShowQuestsPatch().Enable();
