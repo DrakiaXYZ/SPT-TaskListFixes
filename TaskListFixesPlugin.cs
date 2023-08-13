@@ -58,7 +58,7 @@ namespace DrakiaXYZ.TaskListFixes
 			TasksScreen __instance, QuestControllerClass questController, ISession session, Func<QuestClass, bool> ____questsAdditionalFilter,
 			string ____currentLocationId, Profile ____activeProfile, Dictionary<QuestClass, bool> ____questsAvailability, GameObject ____noActiveTasksObject,
 			NotesTask ____notesTaskTemplate, RectTransform ____notesTaskContent, GameObject ____notesTaskDescriptionTemplate, GameObject ____notesTaskDescription,
-			InventoryControllerClass ____inventoryController)
+			object ____inventoryController)
 		{
 			// Dynamically get the UI, and the required methods, so we can avoid referencing a GClass
 			FieldInfo uiFieldInfo = AccessTools.Field(typeof(TasksScreen), "UI");
