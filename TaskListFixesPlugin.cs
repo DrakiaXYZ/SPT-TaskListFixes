@@ -35,6 +35,8 @@ namespace DrakiaXYZ.TaskListFixes
             new TasksScreenShowPatch().Enable();
             new QuestProgressViewPatch().Enable();
             new QuestsFilterPanelSortPatch().Enable();
+            new QuestsFilterPanelShowRestoreSortPatch().Enable();
+            new TasksScreenSetQuestsFilterRememberPatch().Enable();
 
             new QuestStringFieldComparePatch().Enable();
             new QuestLocationComparePatch().Enable();
@@ -72,6 +74,56 @@ namespace DrakiaXYZ.TaskListFixes
         }
     }
 
+    // Allow restoring the sort order to the last used ordering
+    class QuestsFilterPanelShowRestoreSortPatch : ModulePatch
+    {
+        private static PropertyInfo _sortAscendProperty;
+        private static PropertyInfo _sortTypeProperty;
+
+        protected override MethodBase GetTargetMethod()
+        {
+            Type tasksScreenType = typeof(TasksScreen);
+
+            _sortAscendProperty = AccessTools.Property(tasksScreenType, "SortAscend");
+            _sortTypeProperty = AccessTools.Property(tasksScreenType, "SortType");
+
+            return AccessTools.Method(typeof(QuestsFilterPanel), "Show");
+        }
+
+        [PatchPrefix]
+        public static void PatchPrefix(TasksScreen tasksScreen)
+        {
+            // If we're not remembering sorting, do nothing
+            if (!Settings.RememberSorting.Value) { return; }
+
+            // Only restore these if we have a stored value
+            if (Settings._LastSortBy.Value >= 0)
+            {
+                _sortTypeProperty.SetValue(tasksScreen, Settings._LastSortBy.Value);
+                _sortAscendProperty.SetValue(tasksScreen, Settings._LastSortAscend.Value);
+            }
+        }
+    }
+
+    // Store the last used sort column and ascend flag
+    class TasksScreenSetQuestsFilterRememberPatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod()
+        {
+            return AccessTools.Method(typeof(TasksScreen), "SetQuestsFilter");
+        }
+
+        [PatchPrefix]
+        public static void PatchPrefix(EQuestsSortType sortType, bool sortDirection)
+        {
+            // If we're not remembering sorting, do nothing
+            if (!Settings.RememberSorting.Value) { return; }
+
+            Settings._LastSortBy.Value = (int)sortType;
+            Settings._LastSortAscend.Value = sortDirection;
+        }
+    }
+
     class QuestStringFieldComparePatch : ModulePatch
     {
         protected override MethodBase GetTargetMethod()
@@ -98,7 +150,7 @@ namespace DrakiaXYZ.TaskListFixes
 
         }
 
-        private static int TraderCompare(QuestClass quest1, QuestClass quest2)
+        public static int TraderCompare(QuestClass quest1, QuestClass quest2)
         {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {
@@ -117,29 +169,19 @@ namespace DrakiaXYZ.TaskListFixes
                 string locationId1 = quest1.Template.LocationId;
                 string locationId2 = quest2.Template.LocationId;
 
+                // Sort by the map name
                 if (Settings.GroupTraderByLoc.Value && locationId1 != locationId2)
                 {
-                    // Sort "any" above other locations
-                    if (locationId2 == "any")
-                    {
-                        return 1;
-                    }
-                    if (locationId1 == "any")
-                    {
-                        return -1;
-                    }
-
-                    // Otherwise sort by the map name
-                    string locationName = TaskListFixesPlugin.Localized(locationId1 + " Name");
-                    string locationName2 = TaskListFixesPlugin.Localized(locationId2 + " Name");
-                    return string.CompareOrdinal(locationName, locationName2);
+                    return QuestLocationComparePatch.LocationCompare(quest1, quest2, null);
                 }
 
+                // Sort by quest name
                 if (Settings.SubSortByName.Value)
                 {
-                    return string.CompareOrdinal(quest1.Template.Name, quest2.Template.Name);
+                    return TaskNameCompare(quest1, quest2);
                 }
 
+                // Sort by quest start time
                 return quest1.StartTime.CompareTo(quest2.StartTime);
             }
 
@@ -204,7 +246,7 @@ namespace DrakiaXYZ.TaskListFixes
             __result = LocationCompare(x, y, ____locationId);
         }
 
-        private static int LocationCompare(QuestClass quest1, QuestClass quest2, string locationId)
+        public static int LocationCompare(QuestClass quest1, QuestClass quest2, string locationId)
         {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {
@@ -223,9 +265,7 @@ namespace DrakiaXYZ.TaskListFixes
                 string traderId2 = quest2.Template.TraderId;
                 if (Settings.GroupLocByTrader.Value && traderId1 != traderId2)
                 {
-                    string traderName1 = TaskListFixesPlugin.Localized(traderId1 + " Nickname");
-                    string traderName2 = TaskListFixesPlugin.Localized(traderId2 + " Nickname");
-                    return string.CompareOrdinal(traderName1, traderName2);
+                    return QuestStringFieldComparePatch.TraderCompare(quest1, quest2);
                 }
 
                 if (Settings.SubSortByName.Value)
@@ -432,6 +472,12 @@ namespace DrakiaXYZ.TaskListFixes
         [PatchPrefix]
         public static void PatchPrefix(QuestsFilterPanel __instance, EQuestsSortType sortType, FilterButton button)
         {
+            // If we're restoring the sort order, and we're sorting by the same column as our stored one, don't change the default sort order here
+            if (Settings.RememberSorting.Value && Settings._LastSortBy.Value == (int)sortType)
+            {
+                return;
+            }
+
             FilterButton activeFilterButton = _filterButtonField.GetValue(__instance) as FilterButton;
 
             // If the button is different than the stored filterButton_0, it means we're sorting by a new column.
