@@ -18,29 +18,29 @@ namespace DrakiaXYZ.TaskListFixes
     [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.2.2")]
     public class TaskListFixesPlugin : BaseUnityPlugin
     {
-		// Note: We use a cached quest progress dictionary because fetching quest progress actually
-		//       triggers a calculation any time it's read
+        // Note: We use a cached quest progress dictionary because fetching quest progress actually
+        //       triggers a calculation any time it's read
         public static readonly Dictionary<QuestClass, int> QuestProgressCache = new Dictionary<QuestClass, int>();
 
         private static MethodInfo _stringLocalizedMethod;
 
         private void Awake()
         {
-			Settings.Init(Config);
+            Settings.Init(Config);
 
             Type[] localizedParams = new Type[] { typeof(string), typeof(string) };
             Type stringLocalizeClass = PatchConstants.EftTypes.First(x => x.GetMethod("Localized", localizedParams) != null);
             _stringLocalizedMethod = AccessTools.Method(stringLocalizeClass, "Localized", localizedParams);
 
             new TasksScreenShowPatch().Enable();
-			new QuestProgressViewPatch().Enable();
-			new QuestsFilterPanelSortPatch().Enable();
+            new QuestProgressViewPatch().Enable();
+            new QuestsFilterPanelSortPatch().Enable();
 
-			new QuestStringFieldComparePatch().Enable();
-			new QuestLocationComparePatch().Enable();
-			new QuestStatusComparePatch().Enable();
-			new QuestProgressComparePatch().Enable();
-		}
+            new QuestStringFieldComparePatch().Enable();
+            new QuestLocationComparePatch().Enable();
+            new QuestStatusComparePatch().Enable();
+            new QuestProgressComparePatch().Enable();
+        }
 
         public static bool HandleNullOrEqualQuestCompare(QuestClass quest1, QuestClass quest2, out int result)
         {
@@ -72,31 +72,31 @@ namespace DrakiaXYZ.TaskListFixes
         }
     }
 
-	class QuestStringFieldComparePatch : ModulePatch
-	{
+    class QuestStringFieldComparePatch : ModulePatch
+    {
         protected override MethodBase GetTargetMethod()
         {
             Type questStringFieldComparerType = PatchConstants.EftTypes.First(x => x.Name == "QuestStringFieldComparer");
             return AccessTools.Method(questStringFieldComparerType, "Compare");
         }
 
-		[PatchPostfix]
-		public static void PatchPostfix(QuestClass x, QuestClass y, EQuestsSortType ____sortType, ref int __result)
-		{
-			switch (____sortType)
-			{
-				case EQuestsSortType.Trader:
-					__result = TraderCompare(x, y);
-					break;
-				case EQuestsSortType.Type:
-					__result = TypeCompare(x, y);
-					break;
-				case EQuestsSortType.Task:
-					__result = TaskNameCompare(x, y);
-					break;
-			}
-			
-		}
+        [PatchPostfix]
+        public static void PatchPostfix(QuestClass x, QuestClass y, EQuestsSortType ____sortType, ref int __result)
+        {
+            switch (____sortType)
+            {
+                case EQuestsSortType.Trader:
+                    __result = TraderCompare(x, y);
+                    break;
+                case EQuestsSortType.Type:
+                    __result = TypeCompare(x, y);
+                    break;
+                case EQuestsSortType.Task:
+                    __result = TaskNameCompare(x, y);
+                    break;
+            }
+
+        }
 
         private static int TraderCompare(QuestClass quest1, QuestClass quest2)
         {
@@ -190,22 +190,22 @@ namespace DrakiaXYZ.TaskListFixes
         }
     }
 
-	class QuestLocationComparePatch : ModulePatch
-	{
-		protected override MethodBase GetTargetMethod()
-		{
-			Type questLocationComparerType = PatchConstants.EftTypes.First(x => x.Name == "QuestLocationComparer");
-			return AccessTools.Method(questLocationComparerType, "Compare");
-		}
+    class QuestLocationComparePatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod()
+        {
+            Type questLocationComparerType = PatchConstants.EftTypes.First(x => x.Name == "QuestLocationComparer");
+            return AccessTools.Method(questLocationComparerType, "Compare");
+        }
 
-		[PatchPostfix]
-		public static void PatchPostfix(QuestClass x, QuestClass y, ref int __result, string ____locationId)
-		{
-			__result = LocationCompare(x, y, ____locationId);
-		}
+        [PatchPostfix]
+        public static void PatchPostfix(QuestClass x, QuestClass y, ref int __result, string ____locationId)
+        {
+            __result = LocationCompare(x, y, ____locationId);
+        }
 
-		private static int LocationCompare(QuestClass quest1, QuestClass quest2, string locationId)
-		{
+        private static int LocationCompare(QuestClass quest1, QuestClass quest2, string locationId)
+        {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {
                 return result;
@@ -230,7 +230,7 @@ namespace DrakiaXYZ.TaskListFixes
 
                 if (Settings.SubSortByName.Value)
                 {
-					return QuestStringFieldComparePatch.TaskNameCompare(quest1, quest2);
+                    return QuestStringFieldComparePatch.TaskNameCompare(quest1, quest2);
                 }
 
                 return quest1.StartTime.CompareTo(quest2.StartTime);
@@ -261,7 +261,7 @@ namespace DrakiaXYZ.TaskListFixes
             string locationName2 = TaskListFixesPlugin.Localized(locationId2 + " Name");
             return string.CompareOrdinal(locationName1, locationName2);
         }
-	}
+    }
 
     class QuestStatusComparePatch : ModulePatch
     {
@@ -274,11 +274,11 @@ namespace DrakiaXYZ.TaskListFixes
         [PatchPostfix]
         public static void PatchPostfix(QuestClass x, QuestClass y, ref int __result)
         {
-			__result = StatusCompare(x, y);
+            __result = StatusCompare(x, y);
         }
 
-		private static int StatusCompare(QuestClass quest1, QuestClass quest2)
-		{
+        private static int StatusCompare(QuestClass quest1, QuestClass quest2)
+        {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {
                 return result;
@@ -337,20 +337,20 @@ namespace DrakiaXYZ.TaskListFixes
         [PatchPrefix]
         public static bool PatchPrefix(QuestClass x, QuestClass y, ref int __result)
         {
-			__result = ProgressCompare(x, y);
+            __result = ProgressCompare(x, y);
 
-			// We skip the original in this case to avoid the performance hit of fetching quest progress
-			return false;
+            // We skip the original in this case to avoid the performance hit of fetching quest progress
+            return false;
         }
 
-		private static int ProgressCompare(QuestClass quest1, QuestClass quest2)
-		{
+        private static int ProgressCompare(QuestClass quest1, QuestClass quest2)
+        {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {
                 return result;
             }
 
-			// Use a quest progress cache to avoid re-calculating quest progress constantly
+            // Use a quest progress cache to avoid re-calculating quest progress constantly
             int quest1Progress, quest2Progress;
             if (!TaskListFixesPlugin.QuestProgressCache.TryGetValue(quest1, out quest1Progress))
             {
@@ -382,78 +382,78 @@ namespace DrakiaXYZ.TaskListFixes
         }
     }
 
-	// Patch used for clearing our cached quest progress data
-	class TasksScreenShowPatch : ModulePatch
-	{
-		protected override MethodBase GetTargetMethod()
-		{
-			return AccessTools.Method(typeof(TasksScreen), "Show");
-		}
-
-		[PatchPrefix]
-		public static void PatchPrefix()
-		{
-            TaskListFixesPlugin.QuestProgressCache.Clear();
-		}
-	}
-
-	// Patch used to cache quest progress any time a QuestProgressView is shown
-	class QuestProgressViewPatch : ModulePatch
-	{
-		protected override MethodBase GetTargetMethod()
-		{
-			return AccessTools.Method(typeof(QuestProgressView), "Show");
-		}
-
-		[PatchPostfix]
-		public static void PatchPostfix(QuestClass quest, TextMeshProUGUI ____percentages)
-		{
-			// Luckily we can just go based on the text in the _percentages textmesh, because it's the progress as a percentage
-			if (Int32.TryParse(____percentages.text, out int progress))
-			{
-				TaskListFixesPlugin.QuestProgressCache[quest] = progress;
-			}
-		}
-	}
-
-	// Patch used to change the default ordering when sorting by a new column
-	class QuestsFilterPanelSortPatch : ModulePatch
+    // Patch used for clearing our cached quest progress data
+    class TasksScreenShowPatch : ModulePatch
     {
-		private static PropertyInfo _sortDescendProperty;
-		private static FieldInfo _filterButtonField;
-		protected override MethodBase GetTargetMethod()
-		{
-			_sortDescendProperty = AccessTools.GetDeclaredProperties(typeof(QuestsFilterPanel)).First(x => x.PropertyType == typeof(bool));
-			_filterButtonField = AccessTools.GetDeclaredFields(typeof(QuestsFilterPanel)).First(x => x.FieldType == typeof(FilterButton));
+        protected override MethodBase GetTargetMethod()
+        {
+            return AccessTools.Method(typeof(TasksScreen), "Show");
+        }
+
+        [PatchPrefix]
+        public static void PatchPrefix()
+        {
+            TaskListFixesPlugin.QuestProgressCache.Clear();
+        }
+    }
+
+    // Patch used to cache quest progress any time a QuestProgressView is shown
+    class QuestProgressViewPatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod()
+        {
+            return AccessTools.Method(typeof(QuestProgressView), "Show");
+        }
+
+        [PatchPostfix]
+        public static void PatchPostfix(QuestClass quest, TextMeshProUGUI ____percentages)
+        {
+            // Luckily we can just go based on the text in the _percentages textmesh, because it's the progress as a percentage
+            if (Int32.TryParse(____percentages.text, out int progress))
+            {
+                TaskListFixesPlugin.QuestProgressCache[quest] = progress;
+            }
+        }
+    }
+
+    // Patch used to change the default ordering when sorting by a new column
+    class QuestsFilterPanelSortPatch : ModulePatch
+    {
+        private static PropertyInfo _sortDescendProperty;
+        private static FieldInfo _filterButtonField;
+        protected override MethodBase GetTargetMethod()
+        {
+            _sortDescendProperty = AccessTools.GetDeclaredProperties(typeof(QuestsFilterPanel)).First(x => x.PropertyType == typeof(bool));
+            _filterButtonField = AccessTools.GetDeclaredFields(typeof(QuestsFilterPanel)).First(x => x.FieldType == typeof(FilterButton));
 
             return AccessTools.Method(typeof(QuestsFilterPanel), "method_1");
-		}
+        }
 
-		[PatchPrefix]
-		public static void PatchPrefix(QuestsFilterPanel __instance, EQuestsSortType sortType, FilterButton button)
-		{
-			FilterButton activeFilterButton = _filterButtonField.GetValue(__instance) as FilterButton;
+        [PatchPrefix]
+        public static void PatchPrefix(QuestsFilterPanel __instance, EQuestsSortType sortType, FilterButton button)
+        {
+            FilterButton activeFilterButton = _filterButtonField.GetValue(__instance) as FilterButton;
 
             // If the button is different than the stored filterButton_0, it means we're sorting by a new column.
             if (Settings.NewDefaultOrder.Value && button != activeFilterButton)
             {
-				switch (sortType)
+                switch (sortType)
                 {
-					// Sort these default ascending
-					case EQuestsSortType.Task:
-					case EQuestsSortType.Trader:
-					case EQuestsSortType.Location:
-						_sortDescendProperty.SetValue(__instance, false);
-						break;
+                    // Sort these default ascending
+                    case EQuestsSortType.Task:
+                    case EQuestsSortType.Trader:
+                    case EQuestsSortType.Location:
+                        _sortDescendProperty.SetValue(__instance, false);
+                        break;
 
-					// Sort these default descending
-					case EQuestsSortType.Progress:
-					case EQuestsSortType.Status:
-						_sortDescendProperty.SetValue(__instance, true);
-						break;
+                    // Sort these default descending
+                    case EQuestsSortType.Progress:
+                    case EQuestsSortType.Status:
+                        _sortDescendProperty.SetValue(__instance, true);
+                        break;
                 }
             }
-		}
-	}
+        }
+    }
 
 }
