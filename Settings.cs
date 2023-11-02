@@ -22,32 +22,46 @@ namespace DrakiaXYZ.TaskListFixes
                 GeneralSectionTitle,
                 "New Default Order",
                 true,
-                "Use the new default sort orders when changing sort column"
-                );
+                new ConfigDescription(
+                    "Use the new default sort orders when changing sort column",
+                    null,
+                    new ConfigurationManagerAttributes { Order = 5 }));
 
             SubSortByName = Config.Bind(
                 GeneralSectionTitle,
                 "Sub Sort By Name",
                 true,
-                "Use task name for sub sorting instead of task start time");
+                new ConfigDescription(
+                    "Use task name for sub sorting instead of task start time",
+                    null,
+                    new ConfigurationManagerAttributes { Order = 4 }));
 
             GroupLocByTrader = Config.Bind(
                 GeneralSectionTitle,
                 "Group Locations By Trader",
                 true,
-                "Sub sort locations by trader name");
+                new ConfigDescription(
+                    "Sub sort locations by trader name",
+                    null,
+                    new ConfigurationManagerAttributes { Order = 3 }));
 
             GroupTraderByLoc = Config.Bind(
                 GeneralSectionTitle,
                 "Group Traders By Location",
                 true,
-                "Sub sort traders by location name");
+                new ConfigDescription(
+                    "Sub sort traders by location name",
+                    null,
+                    new ConfigurationManagerAttributes { Order = 2 }));
 
             RememberSorting = Config.Bind(
                 GeneralSectionTitle,
                 "Remember Sort Order",
                 false,
-                "Whether to remember and restore the last used sort order");
+                new ConfigDescription(
+                    "Whether to remember and restore the last used sort order",
+                    null,
+                    new ConfigurationManagerAttributes { Order = 1 }));
 
             _LastSortBy = Config.Bind(
                 GeneralSectionTitle,

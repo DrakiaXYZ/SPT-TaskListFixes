@@ -15,7 +15,7 @@ using static RawQuestClass;
 
 namespace DrakiaXYZ.TaskListFixes
 {
-    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.2.2")]
+    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.3.0")]
     public class TaskListFixesPlugin : BaseUnityPlugin
     {
         // Note: We use a cached quest progress dictionary because fetching quest progress actually
