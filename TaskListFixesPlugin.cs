@@ -12,6 +12,7 @@ using System.Reflection;
 using TMPro;
 using UnityEngine;
 using static RawQuestClass;
+using QuestClass = GClass1249;
 
 namespace DrakiaXYZ.TaskListFixes
 {
@@ -34,9 +35,9 @@ namespace DrakiaXYZ.TaskListFixes
 
             new TasksScreenShowPatch().Enable();
             new QuestProgressViewPatch().Enable();
-            new QuestsFilterPanelSortPatch().Enable();
-            new QuestsFilterPanelShowRestoreSortPatch().Enable();
-            new TasksScreenSetQuestsFilterRememberPatch().Enable();
+            new QuestsSortPanelSortPatch().Enable();
+            new QuestsSortPanelShowRestoreSortPatch().Enable();
+            new TasksScreenSortRememberPatch().Enable();
 
             new QuestStringFieldComparePatch().Enable();
             new QuestLocationComparePatch().Enable();
@@ -75,23 +76,15 @@ namespace DrakiaXYZ.TaskListFixes
     }
 
     // Allow restoring the sort order to the last used ordering
-    class QuestsFilterPanelShowRestoreSortPatch : ModulePatch
+    class QuestsSortPanelShowRestoreSortPatch : ModulePatch
     {
-        private static PropertyInfo _sortAscendProperty;
-        private static PropertyInfo _sortTypeProperty;
-
         protected override MethodBase GetTargetMethod()
         {
-            Type tasksScreenType = typeof(TasksScreen);
-
-            _sortAscendProperty = AccessTools.Property(tasksScreenType, "SortAscend");
-            _sortTypeProperty = AccessTools.Property(tasksScreenType, "SortType");
-
-            return AccessTools.Method(typeof(QuestsFilterPanel), "Show");
+            return AccessTools.GetDeclaredMethods(typeof(QuestsSortPanel)).Single(x => x.Name == "Show");
         }
 
         [PatchPrefix]
-        public static void PatchPrefix(TasksScreen tasksScreen)
+        public static void PatchPrefix(ref EQuestsSortType defaultSortingType, ref bool defaultAscending)
         {
             // If we're not remembering sorting, do nothing
             if (!Settings.RememberSorting.Value) { return; }
@@ -99,18 +92,18 @@ namespace DrakiaXYZ.TaskListFixes
             // Only restore these if we have a stored value
             if (Settings._LastSortBy.Value >= 0)
             {
-                _sortTypeProperty.SetValue(tasksScreen, Settings._LastSortBy.Value);
-                _sortAscendProperty.SetValue(tasksScreen, Settings._LastSortAscend.Value);
+                defaultSortingType = (EQuestsSortType)Settings._LastSortBy.Value;
+                defaultAscending = Settings._LastSortAscend.Value;
             }
         }
     }
 
     // Store the last used sort column and ascend flag
-    class TasksScreenSetQuestsFilterRememberPatch : ModulePatch
+    class TasksScreenSortRememberPatch : ModulePatch
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(TasksScreen), "SetQuestsFilter");
+            return AccessTools.Method(typeof(TasksScreen), "Sort");
         }
 
         [PatchPrefix]
@@ -457,20 +450,20 @@ namespace DrakiaXYZ.TaskListFixes
     }
 
     // Patch used to change the default ordering when sorting by a new column
-    class QuestsFilterPanelSortPatch : ModulePatch
+    class QuestsSortPanelSortPatch : ModulePatch
     {
-        private static PropertyInfo _sortDescendProperty;
+        private static FieldInfo _sortDescendField;
         private static FieldInfo _filterButtonField;
         protected override MethodBase GetTargetMethod()
         {
-            _sortDescendProperty = AccessTools.GetDeclaredProperties(typeof(QuestsFilterPanel)).First(x => x.PropertyType == typeof(bool));
-            _filterButtonField = AccessTools.GetDeclaredFields(typeof(QuestsFilterPanel)).First(x => x.FieldType == typeof(FilterButton));
+            _sortDescendField = AccessTools.GetDeclaredFields(typeof(QuestsSortPanel).BaseType).First(x => x.FieldType == typeof(bool));
+            _filterButtonField = AccessTools.GetDeclaredFields(typeof(QuestsSortPanel).BaseType).First(x => x.FieldType == typeof(FilterButton));
 
-            return AccessTools.Method(typeof(QuestsFilterPanel), "method_1");
+            return AccessTools.Method(typeof(QuestsSortPanel), "method_1");
         }
 
         [PatchPrefix]
-        public static void PatchPrefix(QuestsFilterPanel __instance, EQuestsSortType sortType, FilterButton button)
+        public static void PatchPrefix(QuestsSortPanel __instance, EQuestsSortType sortType, FilterButton button)
         {
             // If we're restoring the sort order, and we're sorting by the same column as our stored one, don't change the default sort order here
             if (Settings.RememberSorting.Value && Settings._LastSortBy.Value == (int)sortType)
@@ -489,13 +482,13 @@ namespace DrakiaXYZ.TaskListFixes
                     case EQuestsSortType.Task:
                     case EQuestsSortType.Trader:
                     case EQuestsSortType.Location:
-                        _sortDescendProperty.SetValue(__instance, false);
+                        _sortDescendField.SetValue(__instance, false);
                         break;
 
                     // Sort these default descending
                     case EQuestsSortType.Progress:
                     case EQuestsSortType.Status:
-                        _sortDescendProperty.SetValue(__instance, true);
+                        _sortDescendField.SetValue(__instance, true);
                         break;
                 }
             }
