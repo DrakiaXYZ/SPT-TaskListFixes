@@ -16,7 +16,8 @@ using QuestClass = GClass1249;
 
 namespace DrakiaXYZ.TaskListFixes
 {
-    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.3.0")]
+    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.4.0")]
+    [BepInDependency("com.spt-aki.core", "3.8.0")]
     public class TaskListFixesPlugin : BaseUnityPlugin
     {
         // Note: We use a cached quest progress dictionary because fetching quest progress actually
@@ -456,10 +457,11 @@ namespace DrakiaXYZ.TaskListFixes
         private static FieldInfo _filterButtonField;
         protected override MethodBase GetTargetMethod()
         {
-            _sortDescendField = AccessTools.GetDeclaredFields(typeof(QuestsSortPanel).BaseType).First(x => x.FieldType == typeof(bool));
-            _filterButtonField = AccessTools.GetDeclaredFields(typeof(QuestsSortPanel).BaseType).First(x => x.FieldType == typeof(FilterButton));
+            Type targetType = typeof(QuestsSortPanel).BaseType;
+            _sortDescendField = AccessTools.GetDeclaredFields(targetType).First(x => x.FieldType == typeof(bool));
+            _filterButtonField = AccessTools.GetDeclaredFields(targetType).First(x => x.FieldType == typeof(FilterButton));
 
-            return AccessTools.Method(typeof(QuestsSortPanel), "method_1");
+            return AccessTools.Method(targetType, "method_1");
         }
 
         [PatchPrefix]
