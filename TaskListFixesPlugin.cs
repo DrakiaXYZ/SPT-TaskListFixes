@@ -1,5 +1,5 @@
-﻿using Aki.Reflection.Patching;
-using Aki.Reflection.Utils;
+﻿using SPT.Reflection.Patching;
+using SPT.Reflection.Utils;
 using BepInEx;
 using EFT;
 using EFT.Quests;
@@ -12,12 +12,11 @@ using System.Reflection;
 using TMPro;
 using UnityEngine;
 using static RawQuestClass;
-using QuestClass = GClass1249;
 
 namespace DrakiaXYZ.TaskListFixes
 {
-    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.4.0")]
-    [BepInDependency("com.spt-aki.core", "3.8.0")]
+    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.5.0")]
+    [BepInDependency("com.SPT.core", "3.9.0")]
     public class TaskListFixesPlugin : BaseUnityPlugin
     {
         // Note: We use a cached quest progress dictionary because fetching quest progress actually
