@@ -30,10 +30,22 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Package|AnyCPU'">
+    <OutputPath>bin\Package\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="0Harmony, Version=2.9.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\BepInEx\core\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="Comfort">
+      <HintPath>..\..\EscapeFromTarkov_Data\Managed\Comfort.dll</HintPath>
     </Reference>
     <Reference Include="spt-common">
       <HintPath>..\..\BepInEx\plugins\spt\spt-common.dll</HintPath>
@@ -45,7 +57,7 @@
       <HintPath>..\..\EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx">
-      <HintPath>References\BepInEx.dll</HintPath>
+      <HintPath>..\..\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
     <Reference Include="Sirenix.Serialization">
       <HintPath>..\..\EscapeFromTarkov_Data\Managed\Sirenix.Serialization.dll</HintPath>
@@ -77,20 +89,32 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Comparers\QuestLocationComparer.cs" />
+    <Compile Include="Comparers\QuestProgressComparer.cs" />
+    <Compile Include="Comparers\QuestStatusComparer.cs" />
+    <Compile Include="Comparers\QuestTraderComparer.cs" />
+    <Compile Include="Comparers\QuestTypeComparer.cs" />
     <Compile Include="ConfigurationManagerAttributes.cs" />
+    <Compile Include="Comparers\QuestNameComparer.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="TaskListFixesPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="VersionChecker\TarkovVersion.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="LICENSE" />
+    <None Include="package.ps1" />
+    <None Include="VersionChecker\setbuild.ps1" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PreBuildEvent>
-    </PreBuildEvent>
+    <PreBuildEvent>powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(ProjectDir)\VersionChecker\setbuild.ps1</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>copy "$(TargetPath)" "$(ProjectDir)\..\..\BepInEx\plugins\$(TargetFileName)"</PostBuildEvent>
+    <PostBuildEvent>copy "$(TargetPath)" "$(ProjectDir)\..\..\BepInEx\plugins\$(TargetFileName)"
+if $(ConfigurationName) == Package (
+  powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(ProjectDir)\package.ps1
+)</PostBuildEvent>
   </PropertyGroup>
 </Project>
