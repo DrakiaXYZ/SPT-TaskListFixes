@@ -1,22 +1,22 @@
-﻿using SPT.Reflection.Patching;
-using SPT.Reflection.Utils;
-using BepInEx;
+﻿using BepInEx;
+using Comfort.Common;
+using DrakiaXYZ.TaskListFixes.Comparers;
+using DrakiaXYZ.TaskListFixes.VersionChecker;
+using EFT;
 using EFT.UI;
 using HarmonyLib;
+using SPT.Reflection.Patching;
+using SPT.Reflection.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using TMPro;
-using DrakiaXYZ.TaskListFixes.Comparers;
-using EFT;
-using Comfort.Common;
-using System.Collections;
 
 namespace DrakiaXYZ.TaskListFixes
 {
-    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.6.0")]
-    [BepInDependency("com.SPT.core", "3.11.0")]
+    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.7.0")]
+    [BepInDependency("com.SPT.core", "4.0.0")]
     public class TaskListFixesPlugin : BaseUnityPlugin
     {
         // Note: We use a cached quest progress dictionary because fetching quest progress actually
@@ -27,6 +27,11 @@ namespace DrakiaXYZ.TaskListFixes
 
         private void Awake()
         {
+            if (!TarkovVersion.CheckEftVersion(Logger, Info, Config))
+            {
+                throw new Exception($"Invalid EFT Version");
+            }
+
             Settings.Init(Config);
 
             Type[] localizedParams = new Type[] { typeof(string), typeof(string) };
@@ -98,12 +103,12 @@ namespace DrakiaXYZ.TaskListFixes
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(TasksPanel), "method_1");
+            return AccessTools.Method(typeof(TasksPanel), "method_3");
         }
 
         [PatchPrefix]
-        public static bool PatchPrefix(EQuestsSortType sortType, bool sortDirection, 
-            ref EQuestsSortType ___equestsSortType_0, ref bool ___bool_0, GClass3535<QuestClass, NotesTask> ___gclass3535_0,
+        public static bool PatchPrefix(TasksPanel __instance, EQuestsSortType sortType, bool sortDirection, 
+            ref EQuestsSortType ___equestsSortType_0, ref bool ___bool_0, GClass3822<QuestClass, NotesTask> ___gclass3822_0,
             Dictionary<QuestClass, bool> ___dictionary_0)
         {
             // If we're remembering sort value, store it now
@@ -142,22 +147,21 @@ namespace DrakiaXYZ.TaskListFixes
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            List<QuestClass> list = ___gclass3535_0.Keys;
+            List<QuestClass> list = ___gclass3822_0.Keys;
             list.Sort(comparer);
             if (___bool_0)
             {
                 list.Reverse();
             }
-            list = list.OrderBy(quest => !___dictionary_0[quest]).ToList<QuestClass>();
-            ___gclass3535_0.UpdateOrder(list);
+            list = list.OrderByDescending(quest => __instance.method_6(quest)).ThenBy(quest => !___dictionary_0[quest]).ToList<QuestClass>();
+            ___gclass3822_0.UpdateOrder(list);
 
             return false;
         }
 
         private static bool IsInRaid()
         {
-            AbstractGame instance = Singleton<AbstractGame>.Instance;
-            return instance is Interface10 || instance is LocalGame;
+            return Singleton<AbstractGame>.Instantiated && Singleton<AbstractGame>.Instance.InRaid;
         }
     }
 

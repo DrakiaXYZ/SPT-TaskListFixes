@@ -1,13 +1,16 @@
-﻿using BepInEx;
+using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using DrakiaXYZ.TaskListFixes.VersionChecker;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
-namespace DrakiaXYZ.Waypoints.VersionChecker
+[assembly: TarkovVersion(40087)]
+
+namespace DrakiaXYZ.TaskListFixes.VersionChecker
 {
     [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = false)]
     public class TarkovVersion : Attribute
