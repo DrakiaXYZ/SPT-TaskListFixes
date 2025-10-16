@@ -15,7 +15,7 @@ using TMPro;
 
 namespace DrakiaXYZ.TaskListFixes
 {
-    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.7.0")]
+    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.7.1")]
     [BepInDependency("com.SPT.core", "4.0.0")]
     public class TaskListFixesPlugin : BaseUnityPlugin
     {
@@ -155,6 +155,7 @@ namespace DrakiaXYZ.TaskListFixes
             }
             list = list.OrderByDescending(quest => __instance.method_6(quest)).ThenBy(quest => !___dictionary_0[quest]).ToList<QuestClass>();
             ___gclass3822_0.UpdateOrder(list);
+            __instance.method_0();
 
             return false;
         }
