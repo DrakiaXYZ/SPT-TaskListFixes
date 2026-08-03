@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using EFT;
+using EFT.Quests;
+using System.Collections.Generic;
 
 namespace DrakiaXYZ.TaskListFixes.Comparers
 {
-    class QuestLocationComparer : IComparer<QuestClass>
+    class QuestLocationComparer : IComparer<Quest>
     {
         private string locationId;
         public QuestLocationComparer(string locationId)
@@ -10,7 +12,7 @@ namespace DrakiaXYZ.TaskListFixes.Comparers
             this.locationId = locationId;
         }
 
-        public int Compare(QuestClass quest1, QuestClass quest2)
+        public int Compare(Quest quest1, Quest quest2)
         {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {
@@ -61,8 +63,8 @@ namespace DrakiaXYZ.TaskListFixes.Comparers
             }
 
             // Finally sort by the actual quest location name
-            string locationName1 = TaskListFixesPlugin.Localized(locationId1 + " Name");
-            string locationName2 = TaskListFixesPlugin.Localized(locationId2 + " Name");
+            string locationName1 = (locationId1 + " Name").Localized();
+            string locationName2 = (locationId2 + " Name").Localized();
             return string.CompareOrdinal(locationName1, locationName2);
         }
     }

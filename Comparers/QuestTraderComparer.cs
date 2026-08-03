@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using EFT;
+using EFT.Quests;
+using System.Collections.Generic;
 
 namespace DrakiaXYZ.TaskListFixes.Comparers
 {
-    class QuestTraderComparer : IComparer<QuestClass>
+    class QuestTraderComparer : IComparer<Quest>
     {
-        public int Compare(QuestClass quest1, QuestClass quest2)
+        public int Compare(Quest quest1, Quest quest2)
         {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {
@@ -18,8 +20,8 @@ namespace DrakiaXYZ.TaskListFixes.Comparers
             // If the trader names aren't the same, compare the trader's nicknames
             if (traderId1 != traderId2)
             {
-                string traderName1 = TaskListFixesPlugin.Localized(traderId1 + " Nickname");
-                string traderName2 = TaskListFixesPlugin.Localized(traderId2 + " Nickname");
+                string traderName1 = (traderId1 + " Nickname").Localized();
+                string traderName2 = (traderId2 + " Nickname").Localized();
                 return string.CompareOrdinal(traderName1, traderName2);
             }
 

@@ -1,11 +1,12 @@
-﻿using System;
+﻿using EFT.Quests;
+using System;
 using System.Collections.Generic;
 
 namespace DrakiaXYZ.TaskListFixes.Comparers
 {
-    class QuestProgressComparer : IComparer<QuestClass>
+    class QuestProgressComparer : IComparer<Quest>
     {
-        public int Compare(QuestClass quest1, QuestClass quest2)
+        public int Compare(Quest quest1, Quest quest2)
         {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {

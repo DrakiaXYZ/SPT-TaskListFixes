@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace DrakiaXYZ.TaskListFixes.Comparers
 {
-    class QuestStatusComparer : IComparer<QuestClass>
+    class QuestStatusComparer : IComparer<Quest>
     {
-        public int Compare(QuestClass quest1, QuestClass quest2)
+        public int Compare(Quest quest1, Quest quest2)
         {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {

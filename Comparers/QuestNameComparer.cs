@@ -1,18 +1,20 @@
-﻿using System.Collections.Generic;
+﻿using EFT;
+using EFT.Quests;
+using System.Collections.Generic;
 
 namespace DrakiaXYZ.TaskListFixes.Comparers
 {
-    class QuestNameComparer : IComparer<QuestClass>
+    class QuestNameComparer : IComparer<Quest>
     {
-        public int Compare(QuestClass quest1, QuestClass quest2)
+        public int Compare(Quest quest1, Quest quest2)
         {
             if (TaskListFixesPlugin.HandleNullOrEqualQuestCompare(quest1, quest2, out int result))
             {
                 return result;
             }
 
-            string questName1 = TaskListFixesPlugin.Localized(quest1.Template.Id + " name");
-            string questName2 = TaskListFixesPlugin.Localized(quest2.Template.Id + " name");
+            string questName1 = (quest1.Template.Id + " name").Localized();
+            string questName2 = (quest2.Template.Id + " name").Localized();
             if (questName1 != questName2)
             {
                 return string.CompareOrdinal(questName1, questName2);

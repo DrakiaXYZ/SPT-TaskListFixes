@@ -3,6 +3,7 @@ using Comfort.Common;
 using DrakiaXYZ.TaskListFixes.Comparers;
 using DrakiaXYZ.TaskListFixes.VersionChecker;
 using EFT;
+using EFT.Quests;
 using EFT.UI;
 using HarmonyLib;
 using SPT.Reflection.Patching;
@@ -15,17 +16,15 @@ using TMPro;
 
 namespace DrakiaXYZ.TaskListFixes
 {
-    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.7.1")]
-    [BepInDependency("com.SPT.core", "4.0.0")]
+    [BepInPlugin("xyz.drakia.tasklistfixes", "DrakiaXYZ-TaskListFixes", "1.8.0")]
+    [BepInDependency("com.SPT.core", "4.1.0")]
     public class TaskListFixesPlugin : BaseUnityPlugin
     {
         // Note: We use a cached quest progress dictionary because fetching quest progress actually
         //       triggers a calculation any time it's read
-        public static readonly Dictionary<QuestClass, double> QuestProgressCache = new Dictionary<QuestClass, double>();
+        public static readonly Dictionary<Quest, double> QuestProgressCache = new Dictionary<Quest, double>();
 
-        private static MethodInfo _stringLocalizedMethod;
-
-        private void Awake()
+        public void Awake()
         {
             if (!TarkovVersion.CheckEftVersion(Logger, Info, Config))
             {
@@ -34,10 +33,6 @@ namespace DrakiaXYZ.TaskListFixes
 
             Settings.Init(Config);
 
-            Type[] localizedParams = new Type[] { typeof(string), typeof(string) };
-            Type stringLocalizeClass = PatchConstants.EftTypes.First(x => x.GetMethod("Localized", localizedParams) != null);
-            _stringLocalizedMethod = AccessTools.Method(stringLocalizeClass, "Localized", localizedParams);
-
             new TasksScreenShowPatch().Enable();
             new QuestProgressViewPatch().Enable();
             new QuestsSortPanelSortPatch().Enable();
@@ -45,7 +40,7 @@ namespace DrakiaXYZ.TaskListFixes
             new TasksPanelSortPatch().Enable();
         }
 
-        public static bool HandleNullOrEqualQuestCompare(QuestClass quest1, QuestClass quest2, out int result)
+        public static bool HandleNullOrEqualQuestCompare(Quest quest1, Quest quest2, out int result)
         {
             if (quest1 == quest2)
             {
@@ -68,11 +63,6 @@ namespace DrakiaXYZ.TaskListFixes
             result = 0;
             return false;
         }
-
-        public static string Localized(string input)
-        {
-            return (string)_stringLocalizedMethod.Invoke(null, new object[] { input, null });
-        }
     }
 
     // Allow restoring the sort order to the last used ordering
@@ -80,7 +70,7 @@ namespace DrakiaXYZ.TaskListFixes
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.GetDeclaredMethods(typeof(QuestsSortPanel)).Single(x => x.Name == "Show");
+            return AccessTools.Method(typeof(QuestsSortPanel), nameof(QuestsSortPanel.Show), new[] { typeof(EQuestsSortType), typeof(bool) });
         }
 
         [PatchPrefix]
@@ -103,13 +93,13 @@ namespace DrakiaXYZ.TaskListFixes
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(TasksPanel), "method_3");
+            return AccessTools.Method(typeof(TasksPanel), nameof(TasksPanel.Sort));
         }
 
         [PatchPrefix]
         public static bool PatchPrefix(TasksPanel __instance, EQuestsSortType sortType, bool sortDirection, 
-            ref EQuestsSortType ___equestsSortType_0, ref bool ___bool_0, GClass3822<QuestClass, NotesTask> ___gclass3822_0,
-            Dictionary<QuestClass, bool> ___dictionary_0)
+            ref EQuestsSortType ____sortType, ref bool ____sortAscend, ViewList<Quest, NotesTask> ____questsViewList,
+            Dictionary<Quest, bool> ____questsAvailability)
         {
             // If we're remembering sort value, store it now
             if (Settings.RememberSorting.Value)
@@ -120,42 +110,42 @@ namespace DrakiaXYZ.TaskListFixes
             }
 
             // Re-implement base sorting behaviour using our own comparers
-            ___equestsSortType_0 = sortType;
-            ___bool_0 = sortDirection;
-            IComparer<QuestClass> comparer;
+            ____sortType = sortType;
+            ____sortAscend = sortDirection;
+            IComparer<Quest> comparer;
             switch (sortType)
             {
                 case EQuestsSortType.Trader:
-                    comparer = new QuestTraderComparer();
+                    comparer = new Comparers.QuestTraderComparer();
                     break;
                 case EQuestsSortType.Type:
-                    comparer = new QuestTypeComparer();
+                    comparer = new Comparers.QuestTypeComparer();
                     break;
                 case EQuestsSortType.Task:
-                    comparer = new QuestNameComparer();
+                    comparer = new Comparers.QuestNameComparer();
                     break;
                 case EQuestsSortType.Location:
                     string locationId = (IsInRaid()) ? Singleton<AbstractGame>.Instance.LocationObjectId : null;
-                    comparer = new QuestLocationComparer(locationId);
+                    comparer = new Comparers.QuestLocationComparer(locationId);
                     break;
                 case EQuestsSortType.Status:
-                    comparer = new QuestStatusComparer();
+                    comparer = new Comparers.QuestStatusComparer();
                     break;
                 case EQuestsSortType.Progress:
-                    comparer = new QuestProgressComparer();
+                    comparer = new Comparers.QuestProgressComparer();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            List<QuestClass> list = ___gclass3822_0.Keys;
+            List<Quest> list = ____questsViewList.Keys;
             list.Sort(comparer);
-            if (___bool_0)
+            if (____sortAscend)
             {
                 list.Reverse();
             }
-            list = list.OrderByDescending(quest => __instance.method_6(quest)).ThenBy(quest => !___dictionary_0[quest]).ToList<QuestClass>();
-            ___gclass3822_0.UpdateOrder(list);
-            __instance.method_0();
+            list = list.OrderByDescending(quest => __instance.CG_Sort(quest)).ThenBy(quest => !____questsAvailability[quest]).ToList<Quest>();
+            ____questsViewList.UpdateOrder(list);
+            __instance.ValidateFavoriteQuestSeparator();
 
             return false;
         }
@@ -190,7 +180,7 @@ namespace DrakiaXYZ.TaskListFixes
         }
 
         [PatchPostfix]
-        public static void PatchPostfix(QuestClass quest, TextMeshProUGUI ____percentages)
+        public static void PatchPostfix(Quest quest, TextMeshProUGUI ____percentages)
         {
             // Luckily we can just go based on the text in the _percentages textmesh, because it's the progress as a percentage
             if (Double.TryParse(____percentages.text, out double progress))
@@ -204,14 +194,14 @@ namespace DrakiaXYZ.TaskListFixes
     class QuestsSortPanelSortPatch : ModulePatch
     {
         private static FieldInfo _sortDescendField;
-        private static FieldInfo _filterButtonField;
+        private static FieldInfo _sortButtonField;
         protected override MethodBase GetTargetMethod()
         {
             Type targetType = typeof(QuestsSortPanel).BaseType;
-            _sortDescendField = AccessTools.GetDeclaredFields(targetType).First(x => x.FieldType == typeof(bool));
-            _filterButtonField = AccessTools.GetDeclaredFields(targetType).First(x => x.FieldType == typeof(FilterButton));
+            _sortDescendField = AccessTools.Field(targetType, "_ascending");
+            _sortButtonField = AccessTools.Field(targetType, "_currentSortButton");
 
-            return AccessTools.Method(targetType, "method_1");
+            return AccessTools.Method(targetType, "OnButtonClick");
         }
 
         [PatchPrefix]
@@ -223,7 +213,7 @@ namespace DrakiaXYZ.TaskListFixes
                 return;
             }
 
-            FilterButton activeFilterButton = _filterButtonField.GetValue(__instance) as FilterButton;
+            FilterButton activeFilterButton = _sortButtonField.GetValue(__instance) as FilterButton;
 
             // If the button is different than the stored filterButton_0, it means we're sorting by a new column.
             if (Settings.NewDefaultOrder.Value && button != activeFilterButton)
